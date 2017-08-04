@@ -6,6 +6,7 @@
 load_lib alpm_query
 Y_MAKEPKG_CHECKDEP=0
 
+aur_hooks_dir=/usr/share/libalpm/hooks/aur
 # Attributes which may be defined specifically for an architecture
 # See: srcinfo_write_section_details() in makepkg
 PKGBUILD_ARCH_ATTRS=(source provides conflicts depends replaces optdepends
@@ -53,6 +54,23 @@ source_makepkg_conf() {
 	SRCPKGDEST=${SRCPKGDEST:-$PKGDEST}
 	export SRCPKGDEST=${EXPORTDIR:-$SRCPKGDEST}
 	export PKGEXT=${_PKGEXT:-$PKGEXT}
+}
+
+# Add hooks for aur packages
+# Put scripts into aur_hooks_dir.
+# I'll call scripts like: ./google-chrome.hook pre-build
+#                         ./google-chrome.hook post-build
+#                         ./google-chrome.hook pre-install
+#                         ./google-chrome.hook post-install success
+#                         ./google-chrome.hook post-install fail
+# Call: run_hook <pkg name> <args...>
+run_hook () {
+	_sh_pos="$aur_hooks_dir/$1.hook"
+	if [ ! -f $_sh_pos ]; then
+		return 0
+	fi
+	echo "Running $2 hook..."
+	$_sh_pos $2 $3
 }
 
 # Read PKGBUILD
@@ -345,11 +363,15 @@ install_package() {
 		esac
 	done
 	(( ! failed )) &&
+		run_hook $pl_pkgname 'pre-install' &&
 		su_pacman -U $SP_ARG "${PACMAN_U_ARG[@]}" "${PACMAN_S_ARG[@]}" "$YPKGDEST"/!(*.sig) ||
 		failed=$?
 	if (( failed )); then
 		warning $(_gettext "Your packages are saved in %s" "$YAOURTTMPDIR")
 		cp -i "$YPKGDEST"/* $YAOURTTMPDIR/ || warning $(_gettext 'Unable to copy packages to %s directory' "$YAOURTTMPDIR")
+		run_hook $pl_pkgname 'post-install' 'fail'
+	else
+		run_hook $pl_pkgname 'post-install' 'success'
 	fi
 
 	return $failed
@@ -392,6 +414,7 @@ package_loop() {
 		edit_pkgbuild $default_answer || { failed=1; break; }
 		prompt "$(_gettext 'Continue building %s ? ' "$pl_pkgname")$(yes_no 1)"
 		builduseragrees || { failed=1; break; }
+		run_hook $pl_pkgname 'pre-build'
 		build_package
 		ret=$?
 		case "$ret" in
@@ -403,6 +426,7 @@ package_loop() {
 			*) return 99 ;; # should never execute
 		esac
 	done
+	run_hook $pl_pkgname 'post-build'
 	(( ! ret )) && (( ! failed )) &&
 	  ( [[ $MAJOR == "pkgbuild" ]] && (( INSTALL_FLAG )) || ! [[ $MAJOR == "pkgbuild" ]] ) &&
 	    { install_package || failed=1; }
