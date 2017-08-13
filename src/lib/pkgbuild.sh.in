@@ -374,7 +374,7 @@ install_package() {
 	if (( failed )); then
 		warning $(_gettext "Your packages are saved in %s" "$YAOURTTMPDIR")
 		cp -i "$YPKGDEST"/* $YAOURTTMPDIR/ || warning $(_gettext 'Unable to copy packages to %s directory' "$YAOURTTMPDIR")
-		(( $_pre_inst_hook_done )) && run_hook $pl_pkgname 'post-install' 'fail'
+		(( _pre_inst_hook_done )) && run_hook $pl_pkgname 'post-install' 'fail'
 	else
 		run_hook $pl_pkgname 'post-install' 'success'
 	fi
