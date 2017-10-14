@@ -6,7 +6,7 @@
 load_lib alpm_query
 Y_MAKEPKG_CHECKDEP=0
 
-aur_hooks_dir=/usr/share/libalpm/hooks/aur
+aur_hooks_dir=/usr/share/libalpm/hooks/yaourt
 # Attributes which may be defined specifically for an architecture
 # See: srcinfo_write_section_details() in makepkg
 PKGBUILD_ARCH_ATTRS=(source provides conflicts depends replaces optdepends
